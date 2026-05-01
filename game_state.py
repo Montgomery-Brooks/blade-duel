@@ -20,6 +20,7 @@ class PlayerState:
     ready: bool = False        # confirmed ready on character select screen
     move_speed: float = 12.0   # pixels per tick — can differ between characters
     last_action_time: float = field(default_factory=time.time)
+    on_ground: bool = True
 
     def take_damage(self, amount: float):
         self.health = max(0.0, self.health - amount)

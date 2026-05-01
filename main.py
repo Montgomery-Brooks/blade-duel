@@ -32,6 +32,7 @@ ai_model     = None
 ACTIONS      = ["idle", "move_left", "move_right", "jump", "attack", "block"]
 SCREEN_W     = 800
 GROUND_Y     = 400
+ATTACK_RANGE = 90
 
 def load_ai():
     global ai_model, AI_AVAILABLE
@@ -48,20 +49,31 @@ def load_ai():
         print(f"[ai] failed to load: {e}")
 
 def build_obs(player, opponent) -> np.ndarray:
-    """Build the observation vector the AI model expects."""
+    """
+    Build observation from the player's own perspective.
+    Player always sees themselves normalised to their own side.
+    """
+    # Distance and relative position
+    dist = abs(player.x - opponent.x) / SCREEN_W
+    # Facing direction — is the player facing their opponent?
+    facing_opponent = 1.0 if (
+        (player.facing == "right" and opponent.x > player.x) or
+        (player.facing == "left"  and opponent.x < player.x)
+    ) else 0.0
+
     return np.array([
-        player.x / SCREEN_W,
-        player.y / GROUND_Y,
-        player.health / 100,
-        1.0 if player.action == "idle"      else 0.0,
+        player.x   / SCREEN_W,
+        player.health / 100.0,
         1.0 if player.action == "attacking" else 0.0,
         1.0 if player.action == "blocking"  else 0.0,
+        1.0 if player.on_ground             else 0.0,
         opponent.x / SCREEN_W,
-        opponent.y / GROUND_Y,
-        opponent.health / 100,
+        opponent.health / 100.0,
         1.0 if opponent.action == "attacking" else 0.0,
         1.0 if opponent.action == "blocking"  else 0.0,
-        abs(player.x - opponent.x) / SCREEN_W,
+        dist,
+        facing_opponent,
+        1.0 if dist < (ATTACK_RANGE / SCREEN_W) else 0.0,
     ], dtype=np.float32)
 
 def get_ai_action(state: GameState, player_id: int) -> str:
@@ -78,14 +90,23 @@ def get_ai_action(state: GameState, player_id: int) -> str:
     return ACTIONS[int(action_idx)]
 
 def apply_ai_action(state: GameState, player_id: int, action_name: str):
-    """Translate an AI action string into game state changes."""
-    opp_id = 2 if player_id == 1 else 1
+    """Translate an AI action into game state changes."""
+    opp_id   = 2 if player_id == 1 else 1
+    player   = state.players.get(player_id)
+    opponent = state.players.get(opp_id)
+
+    # Always face the opponent
+    if player and opponent:
+        if opponent.x > player.x:
+            player.facing = "right"
+        else:
+            player.facing = "left"
+
     if action_name == "move_left":
         state.move_player(player_id, -1, 0)
     elif action_name == "move_right":
         state.move_player(player_id,  1, 0)
     elif action_name == "jump":
-        player = state.players.get(player_id)
         if player:
             player.action = "jumping"
     elif action_name == "attack":
