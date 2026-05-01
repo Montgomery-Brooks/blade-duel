@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>BLADE DUEL</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --gold:   #c9a84c;
+      --gold2:  #e8cc7a;
+      --red:    #c0392b;
+      --blue:   #1a6fb5;
+      --dark:   #0a0a0f;
+      --border: rgba(201,168,76,0.4);
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      background: var(--dark);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: 'Cinzel', serif;
+      overflow: hidden;
+    }
+    body::before {
+      content:'';
+      position:fixed; inset:0;
+      background: repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.07) 2px,rgba(0,0,0,0.07) 4px);
+      pointer-events:none; z-index:100;
+    }
+    #hud {
+      width:800px;
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-end;
+      padding:0 4px 6px;
+    }
+    .phud { display:flex; flex-direction:column; gap:4px; width:260px; }
+    .phud.p2 { align-items:flex-end; }
+    .pname { font-family:'Cinzel Decorative',serif; font-size:11px; letter-spacing:.12em; color:var(--gold2); }
+    .htrack { width:100%; height:14px; background:rgba(255,255,255,.06); border:1px solid var(--border); border-radius:2px; overflow:hidden; }
+    .hfill  { height:100%; border-radius:2px; transition:width .1s; }
+    .p1 .hfill { background:linear-gradient(90deg,#b91c1c,#ef4444); }
+    .p2 .hfill { background:linear-gradient(270deg,#1d4ed8,#3b82f6); margin-left:auto; }
+    .srow { display:flex; gap:8px; align-items:center; }
+    .p2 .srow { justify-content:flex-end; }
+    .pip { width:10px; height:10px; border-radius:50%; border:1px solid var(--gold); background:transparent; }
+    .pip.won { background:var(--gold); }
+    .atag { font-size:9px; letter-spacing:.1em; color:rgba(255,255,255,.4); text-transform:uppercase; }
+    .chud { display:flex; flex-direction:column; align-items:center; gap:2px; }
+    .timer { font-family:'Cinzel Decorative',serif; font-size:28px; color:var(--gold); text-shadow:0 0 20px rgba(201,168,76,.6); line-height:1; }
+    .timer.urgent { color:#ef4444; text-shadow:0 0 20px rgba(239,68,68,.7); }
+    .rlabel { font-size:9px; letter-spacing:.2em; color:rgba(201,168,76,.6); text-transform:uppercase; }
+    #gameCanvas { display:block; border-top:1px solid var(--border); border-bottom:1px solid var(--border); }
+    #bottomBar { width:800px; display:flex; justify-content:space-between; align-items:center; padding:5px 6px 0; }
+    .chint { font-size:9px; letter-spacing:.1em; color:rgba(255,255,255,.2); }
+    .pstat { font-size:9px; letter-spacing:.15em; color:rgba(201,168,76,.5); }
+    #flash { position:fixed; inset:0; pointer-events:none; z-index:50; opacity:0; transition:opacity .1s; }
+
+    /* Connection overlay */
+    #overlay {
+      position:fixed; inset:0;
+      background:rgba(10,8,20,.95);
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      z-index:200; font-family:'Cinzel',serif;
+    }
+    #overlay h1 { font-family:'Cinzel Decorative',serif; font-size:48px; color:var(--gold); margin-bottom:16px; }
+    #overlay p  { color:rgba(255,255,255,.6); font-size:14px; margin-bottom:32px; }
+    #overlay input {
+      background:rgba(255,255,255,.06);
+      border:1px solid var(--border);
+      color:white;
+      font-family:'Cinzel',serif;
+      font-size:16px;
+      padding:12px 20px;
+      border-radius:4px;
+      text-align:center;
+      width:280px;
+      margin-bottom:16px;
+      outline:none;
+    }
+    #overlay input:focus { border-color:var(--gold); }
+    #overlay button {
+      background:var(--gold);
+      color:#0a0a0f;
+      border:none;
+      font-family:'Cinzel Decorative',serif;
+      font-size:14px;
+      padding:12px 32px;
+      border-radius:4px;
+      cursor:pointer;
+      letter-spacing:.1em;
+    }
+    #overlay button:hover { background:var(--gold2); }
+    #overlay .status { color:rgba(255,255,255,.4); font-size:12px; margin-top:16px; min-height:20px; }
+  </style>
+</head>
+<body>
+
+<!-- Name entry overlay -->
+<div id="overlay">
+  <h1>BLADE DUEL</h1>
+  <p>Online Multiplayer Sword Fighting</p>
+  <input id="nameInput" type="text" placeholder="Enter your name" maxlength="16" autocomplete="off"/>
+  <button id="joinBtn">JOIN MATCH</button>
+  <div class="status" id="statusMsg"></div>
+</div>
+
+<!-- HUD -->
+<div id="hud">
+  <div class="phud p1">
+    <span class="pname" id="p1name">PLAYER 1</span>
+    <div class="htrack p1"><div class="hfill" id="p1health" style="width:100%"></div></div>
+    <div class="srow">
+      <div class="pip" id="p1pip1"></div>
+      <div class="pip" id="p1pip2"></div>
+      <span class="atag" id="p1action">IDLE</span>
+    </div>
+  </div>
+  <div class="chud">
+    <div class="timer" id="timer">99</div>
+    <div class="rlabel" id="roundLabel">ROUND 1</div>
+  </div>
+  <div class="phud p2">
+    <span class="pname" id="p2name">PLAYER 2</span>
+    <div class="htrack p2"><div class="hfill" id="p2health" style="width:100%"></div></div>
+    <div class="srow">
+      <span class="atag" id="p2action">IDLE</span>
+      <div class="pip" id="p2pip1"></div>
+      <div class="pip" id="p2pip2"></div>
+    </div>
+  </div>
+</div>
+
+<canvas id="gameCanvas" width="800" height="400"></canvas>
+
+<div id="bottomBar">
+  <span class="chint" id="p1controls">P1: A/D move · F attack · G block</span>
+  <span class="pstat" id="pauseStatus"></span>
+  <span class="chint" id="p2controls">P2: A/D move · F attack · G block</span>
+</div>
+
+<div id="flash"></div>
+
+<script type="module">
+import { GameNetwork } from './network.js';
+
+// ── Canvas ────────────────────────────────────────────────────────────────────
+const canvas = document.getElementById('gameCanvas');
+const ctx    = canvas.getContext('2d');
+
+// ── DOM refs ──────────────────────────────────────────────────────────────────
+const overlay   = document.getElementById('overlay');
+const nameInput = document.getElementById('nameInput');
+const joinBtn   = document.getElementById('joinBtn');
+const statusMsg = document.getElementById('statusMsg');
+const timerEl   = document.getElementById('timer');
+const roundLbl  = document.getElementById('roundLabel');
+const pauseStat = document.getElementById('pauseStatus');
+const flash     = document.getElementById('flash');
+const dom = {
+  p1name:   document.getElementById('p1name'),
+  p2name:   document.getElementById('p2name'),
+  p1health: document.getElementById('p1health'),
+  p2health: document.getElementById('p2health'),
+  p1action: document.getElementById('p1action'),
+  p2action: document.getElementById('p2action'),
+  p1pip1:   document.getElementById('p1pip1'),
+  p1pip2:   document.getElementById('p1pip2'),
+  p2pip1:   document.getElementById('p2pip1'),
+  p2pip2:   document.getElementById('p2pip2'),
+};
+
+// ── Network ───────────────────────────────────────────────────────────────────
+const net = new GameNetwork();
+let myPlayerId = null;
+let lastPhase  = null;
+let playerName = 'Player';
+
+// ── Join flow ─────────────────────────────────────────────────────────────────
+joinBtn.addEventListener('click', joinGame);
+nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') joinGame(); });
+nameInput.focus();
+
+function joinGame() {
+  playerName = nameInput.value.trim() || 'Player';
+  statusMsg.textContent = 'Connecting...';
+  joinBtn.disabled = true;
+
+  net.onAssigned = (pid) => {
+    myPlayerId = pid;
+    statusMsg.textContent = `Joined as Player ${pid} — waiting for opponent...`;
+    net._send({ type: 'join', name: playerName });
+  };
+
+  net.onState = (state) => {
+    if (state.phase !== 'waiting' && overlay.style.display !== 'none') {
+      overlay.style.display = 'none';
+    }
+    updateHUD(state);
+    drawCanvas(state);
+    detectPhaseChange(state);
+    lastPhase = state.phase;
+  };
+
+  net.onError = (msg) => {
+    statusMsg.textContent = `Error: ${msg}`;
+    joinBtn.disabled = false;
+  };
+
+  net.onClose = () => {
+    statusMsg.textContent = 'Disconnected. Refresh to reconnect.';
+    overlay.style.display = 'flex';
+  };
+
+  net.connect();
+}
+
+// ── Phase change ──────────────────────────────────────────────────────────────
+function detectPhaseChange(state) {
+  if (state.phase === lastPhase) return;
+  if (state.phase === 'round_end')  triggerFlash('rgba(255,255,255,0.25)');
+  if (state.phase === 'game_over')  triggerFlash('rgba(201,168,76,0.3)');
+  if (state.phase === 'fighting' && lastPhase === 'character_select') triggerFlash('rgba(255,50,50,0.2)');
+}
+function triggerFlash(col) {
+  flash.style.background = col; flash.style.opacity = '1';
+  setTimeout(() => { flash.style.opacity = '0'; }, 120);
+}
+
+// ── HUD ───────────────────────────────────────────────────────────────────────
+function updateHUD(state) {
+  const p1 = state.players?.['1'];
+  const p2 = state.players?.['2'];
+  const t  = Math.ceil(state.round_timer ?? 99);
+  timerEl.textContent = String(t).padStart(2,'0');
+  timerEl.className   = 'timer' + (t <= 10 ? ' urgent' : '');
+  roundLbl.textContent = `ROUND ${state.round_number ?? 1} / ${state.max_rounds ?? 3}`;
+  pauseStat.textContent = state.phase === 'paused' ? '⏸ PAUSED' : '';
+  if (p1) {
+    dom.p1name.textContent   = (p1.name||'PLAYER 1').toUpperCase();
+    dom.p1health.style.width = `${p1.health}%`;
+    dom.p1action.textContent = (p1.action||'idle').toUpperCase();
+    dom.p1pip1.classList.toggle('won', p1.score >= 1);
+    dom.p1pip2.classList.toggle('won', p1.score >= 2);
+  }
+  if (p2) {
+    dom.p2name.textContent   = (p2.name||'PLAYER 2').toUpperCase();
+    dom.p2health.style.width = `${p2.health}%`;
+    dom.p2action.textContent = (p2.action||'idle').toUpperCase();
+    dom.p2pip1.classList.toggle('won', p2.score >= 1);
+    dom.p2pip2.classList.toggle('won', p2.score >= 2);
+  }
+}
+
+// ── Draw router ───────────────────────────────────────────────────────────────
+function drawCanvas(state) {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  switch(state.phase) {
+    case 'waiting':          drawWaiting(state);         break;
+    case 'character_select': drawCharSelect(state);      break;
+    case 'fighting':         drawFighting(state);        break;
+    case 'paused':           drawFighting(state); drawPaused(state); break;
+    case 'round_end':        drawFighting(state); drawRoundEnd(state); break;
+    case 'game_over':        drawGameOver(state);        break;
+    default:                 drawWaiting(state);
+  }
+}
+
+// ── Background ────────────────────────────────────────────────────────────────
+function drawBg() {
+  const sky = ctx.createLinearGradient(0,0,0,canvas.height);
+  sky.addColorStop(0,'#0d0d1a'); sky.addColorStop(.6,'#1a1025'); sky.addColorStop(1,'#0a0a0f');
+  ctx.fillStyle=sky; ctx.fillRect(0,0,canvas.width,canvas.height);
+  const fog=ctx.createLinearGradient(0,300,0,canvas.height);
+  fog.addColorStop(0,'rgba(30,10,10,0)'); fog.addColorStop(1,'rgba(15,5,5,.6)');
+  ctx.fillStyle=fog; ctx.fillRect(0,300,canvas.width,canvas.height);
+  ctx.strokeStyle='rgba(201,168,76,.3)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(0,340); ctx.lineTo(canvas.width,340); ctx.stroke();
+  const glow=ctx.createLinearGradient(0,340,0,canvas.height);
+  glow.addColorStop(0,'rgba(201,168,76,.06)'); glow.addColorStop(1,'transparent');
+  ctx.fillStyle=glow; ctx.fillRect(0,340,canvas.width,60);
+  [60,canvas.width-60].forEach(x=>{
+    const g=ctx.createLinearGradient(x-8,0,x+8,0);
+    g.addColorStop(0,'rgba(201,168,76,0)'); g.addColorStop(.5,'rgba(201,168,76,.08)'); g.addColorStop(1,'rgba(201,168,76,0)');
+    ctx.fillStyle=g; ctx.fillRect(x-8,60,16,280);
+    ctx.strokeStyle='rgba(201,168,76,.2)'; ctx.strokeRect(x-8,60,16,280);
+  });
+  ctx.strokeStyle='rgba(255,255,255,.04)'; ctx.setLineDash([4,8]);
+  ctx.beginPath(); ctx.moveTo(canvas.width/2,0); ctx.lineTo(canvas.width/2,340); ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+// ── Player drawing ────────────────────────────────────────────────────────────
+function drawPlayer(p, colour) {
+  const W=44, H=72, x=p.x-W/2, y=340-H;
+  ctx.fillStyle='rgba(0,0,0,.4)';
+  ctx.beginPath(); ctx.ellipse(p.x,342,22,6,0,0,Math.PI*2); ctx.fill();
+  if(p.action==='attacking'){ctx.shadowColor=colour;ctx.shadowBlur=20;}
+  ctx.fillStyle=colour; ctx.fillRect(x,y,W,H);
+  const hl=ctx.createLinearGradient(x,y,x+W,y);
+  hl.addColorStop(0,'rgba(255,255,255,.15)'); hl.addColorStop(.4,'rgba(255,255,255,.05)'); hl.addColorStop(1,'rgba(0,0,0,.2)');
+  ctx.fillStyle=hl; ctx.fillRect(x,y,W,H); ctx.shadowBlur=0;
+  ctx.fillStyle=colour; ctx.fillRect(x+6,y-16,W-12,18);
+  ctx.fillStyle='rgba(255,255,255,.1)'; ctx.fillRect(x+8,y-14,W-16,8);
+  ctx.fillStyle=p.action==='blocking'?'rgba(100,200,255,.9)':'rgba(255,220,100,.9)';
+  const ex=p.facing==='right'?x+W-14:x+6; ctx.fillRect(ex,y-10,8,3);
+  drawSword(p,x,y,W,H,colour);
+  if(p.action==='blocking'){
+    const sx=p.facing==='right'?x-12:x+W;
+    ctx.fillStyle='rgba(30,100,200,.5)'; ctx.strokeStyle='rgba(100,180,255,.8)'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.roundRect(sx,y+8,14,40,3); ctx.fill();
+    ctx.shadowColor='#3b82f6'; ctx.shadowBlur=12; ctx.stroke(); ctx.shadowBlur=0;
+  }
+  if(p.action==='ko'){
+    ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillRect(x,y-16,W,H+16);
+    ctx.fillStyle='#ef4444'; ctx.font='bold 11px Cinzel,serif';
+    ctx.textAlign='center'; ctx.fillText('KO',p.x,y+H/2);
+  }
+  // Show player label above character
+  ctx.fillStyle='rgba(255,255,255,.5)'; ctx.font='9px Cinzel,serif';
+  ctx.textAlign='center';
+  const isMe = p.player_id == myPlayerId;
+  ctx.fillText(isMe?'YOU':'OPP', p.x, y-22);
+}
+
+function drawSword(p,x,y,W,H,colour) {
+  const ir=p.facing==='right', ia=p.action==='attacking';
+  ctx.save(); ctx.translate(p.x,y+H*.3);
+  ctx.rotate(ia?(ir?-.6:.6):(ir?.3:-.3));
+  const sx=ir?4:-4;
+  ctx.fillStyle=ia?'#e8e8ff':'#b0b8c8';
+  if(ia){ctx.shadowColor='#fff';ctx.shadowBlur=10;}
+  ctx.fillRect(sx,-3,ir?52:-52,5); ctx.shadowBlur=0;
+  ctx.fillStyle='#c9a84c'; ctx.fillRect(sx-2,-8,ir?10:-10,16);
+  ctx.fillStyle='#5c3d1e'; ctx.fillRect(ir?sx-18:sx+8,-3,16,5);
+  ctx.restore();
+}
+
+// ── Screens ───────────────────────────────────────────────────────────────────
+function drawWaiting(state) {
+  drawBg();
+  const pulse=.5+.5*Math.sin(Date.now()/600);
+  const glow=ctx.createRadialGradient(400,200,0,400,200,200);
+  glow.addColorStop(0,`rgba(201,168,76,${.04+pulse*.04})`); glow.addColorStop(1,'transparent');
+  ctx.fillStyle=glow; ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle='#c9a84c'; ctx.font='900 42px "Cinzel Decorative",serif';
+  ctx.textAlign='center'; ctx.shadowColor='rgba(201,168,76,.5)'; ctx.shadowBlur=20;
+  ctx.fillText('BLADE DUEL',canvas.width/2,140); ctx.shadowBlur=0;
+  ctx.strokeStyle='rgba(201,168,76,.4)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(260,160); ctx.lineTo(540,160); ctx.stroke();
+  const dots='.'.repeat((Math.floor(Date.now()/500)%3)+1);
+  ctx.fillStyle='rgba(255,255,255,.7)'; ctx.font='14px "Cinzel",serif';
+  ctx.fillText('WAITING FOR OPPONENT'+dots,canvas.width/2,210);
+  ctx.fillStyle='rgba(201,168,76,.4)'; ctx.font='10px "Cinzel",serif';
+  ctx.fillText('SHARE THIS PAGE URL WITH YOUR OPPONENT',canvas.width/2,250);
+  ctx.globalAlpha=.15;
+  ctx.fillStyle='#ef4444'; ctx.fillRect(170,268,44,72);
+  ctx.fillStyle='#3b82f6'; ctx.fillRect(586,268,44,72);
+  ctx.globalAlpha=1;
+  requestAnimationFrame(()=>{ if(lastPhase==='waiting'||lastPhase===null) drawWaiting(state); });
+}
+
+function drawCharSelect(state) {
+  drawBg();
+  ctx.fillStyle='#c9a84c'; ctx.font='700 22px "Cinzel Decorative",serif';
+  ctx.textAlign='center'; ctx.fillText('CHOOSE YOUR FIGHTER',canvas.width/2,60);
+  const chars=[
+    {id:'warrior',label:'WARRIOR',colour:'#ef4444',desc:'Balanced · Fast attacks'},
+    {id:'knight', label:'KNIGHT', colour:'#a78bfa',desc:'Heavy · Strong defence'},
+    {id:'rogue',  label:'ROGUE',  colour:'#34d399',desc:'Agile · High speed'},
+  ];
+  chars.forEach((c,i)=>{
+    const cx=160+i*240, cy=180;
+    ctx.fillStyle='rgba(255,255,255,.04)'; ctx.strokeStyle='rgba(201,168,76,.3)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.roundRect(cx-70,cy-80,140,180,4); ctx.fill(); ctx.stroke();
+    ctx.fillStyle=c.colour; ctx.globalAlpha=.8; ctx.fillRect(cx-22,cy-56,44,72); ctx.globalAlpha=1;
+    ctx.fillStyle='#e8cc7a'; ctx.font='600 13px "Cinzel",serif'; ctx.fillText(c.label,cx,cy+40);
+    ctx.fillStyle='rgba(255,255,255,.4)'; ctx.font='10px "Cinzel",serif'; ctx.fillText(c.desc,cx,cy+60);
+    ctx.fillStyle='rgba(201,168,76,.5)'; ctx.font='9px "Cinzel",serif'; ctx.fillText(`PRESS ${i+1}`,cx,cy+78);
+  });
+  const p1=state.players?.['1'], p2=state.players?.['2'];
+  ctx.font='11px "Cinzel",serif';
+  ctx.fillStyle=p1?.ready?'#34d399':'rgba(255,255,255,.3)';
+  ctx.textAlign='left'; ctx.fillText('P1: '+(p1?.ready?'✓ READY':'SELECTING...'),20,canvas.height-16);
+  ctx.fillStyle=p2?.ready?'#34d399':'rgba(255,255,255,.3)';
+  ctx.textAlign='right'; ctx.fillText('P2: '+(p2?.ready?'✓ READY':'SELECTING...'),canvas.width-20,canvas.height-16);
+}
+
+function drawFighting(state) {
+  drawBg();
+  const p1=state.players?.['1'], p2=state.players?.['2'];
+  if(p1) drawPlayer(p1,'#c0392b');
+  if(p2) drawPlayer(p2,'#1a6fb5');
+  if(p1&&p2){
+    const dist=Math.abs(p1.x-p2.x);
+    if(dist<90){
+      const alpha=(1-dist/90)*.4, mx=(p1.x+p2.x)/2;
+      const spark=ctx.createRadialGradient(mx,290,0,mx,290,50);
+      spark.addColorStop(0,`rgba(255,220,100,${alpha})`); spark.addColorStop(1,'transparent');
+      ctx.fillStyle=spark; ctx.fillRect(mx-50,240,100,100);
+    }
+  }
+}
+
+function drawPaused(state) {
+  ctx.fillStyle='rgba(0,0,0,.6)'; ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle='#c9a84c'; ctx.font='700 28px "Cinzel Decorative",serif';
+  ctx.textAlign='center'; ctx.shadowColor='rgba(201,168,76,.5)'; ctx.shadowBlur=16;
+  ctx.fillText('PAUSED',canvas.width/2,190); ctx.shadowBlur=0;
+  ctx.fillStyle='rgba(255,255,255,.4)'; ctx.font='11px "Cinzel",serif';
+  ctx.fillText('PAUSED BY PLAYER '+(state.paused_by||'')+'  ·  PRESS P TO RESUME',canvas.width/2,224);
+}
+
+function drawRoundEnd(state) {
+  ctx.fillStyle='rgba(0,0,0,.65)'; ctx.fillRect(0,0,canvas.width,canvas.height);
+  const wName=state.winner_id?(state.players?.[state.winner_id]?.name||'PLAYER '+state.winner_id):'DRAW';
+  ctx.fillStyle='#c9a84c'; ctx.font='700 32px "Cinzel Decorative",serif';
+  ctx.textAlign='center'; ctx.shadowColor='rgba(201,168,76,.6)'; ctx.shadowBlur=24;
+  ctx.fillText(wName.toUpperCase()+' WINS',canvas.width/2,175); ctx.shadowBlur=0;
+  ctx.fillStyle='rgba(255,255,255,.35)'; ctx.font='11px "Cinzel",serif';
+  ctx.fillText('ROUND COMPLETE',canvas.width/2,210);
+  ctx.fillStyle='rgba(201,168,76,.5)'; ctx.font='10px "Cinzel",serif';
+  ctx.fillText('PRESS N FOR NEXT ROUND',canvas.width/2,240);
+}
+
+function drawGameOver(state) {
+  drawBg();
+  const winner=state.match_winner_id?state.players?.[state.match_winner_id]:null;
+  ctx.fillStyle='#c9a84c'; ctx.font='900 38px "Cinzel Decorative",serif';
+  ctx.textAlign='center'; ctx.shadowColor='rgba(201,168,76,.7)'; ctx.shadowBlur=30;
+  ctx.fillText('VICTORY',canvas.width/2,140); ctx.shadowBlur=0;
+  ctx.strokeStyle='rgba(201,168,76,.4)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(240,158); ctx.lineTo(560,158); ctx.stroke();
+  if(winner){
+    ctx.fillStyle='white'; ctx.font='600 20px "Cinzel",serif';
+    ctx.fillText(winner.name.toUpperCase(),canvas.width/2,200);
+    ctx.fillStyle='rgba(201,168,76,.6)'; ctx.font='11px "Cinzel",serif';
+    ctx.fillText(winner.score+' ROUNDS WON',canvas.width/2,228);
+  }
+  if(state.round_history?.length){
+    ctx.fillStyle='rgba(255,255,255,.2)'; ctx.font='9px "Cinzel",serif';
+    state.round_history.forEach((r,i)=>{
+      const wn=state.players?.[r.winner_id]?.name||'P'+r.winner_id;
+      ctx.fillText('ROUND '+r.round+': '+wn.toUpperCase()+' · '+r.duration+'s',canvas.width/2,265+i*18);
+    });
+  }
+  ctx.fillStyle='rgba(201,168,76,.4)'; ctx.font='10px "Cinzel",serif';
+  ctx.fillText('REFRESH PAGE TO PLAY AGAIN',canvas.width/2,canvas.height-20);
+}
+
+// ── Keyboard extras ───────────────────────────────────────────────────────────
+document.addEventListener('keydown',(e)=>{
+  if(e.code==='KeyN') net.nextRound();
+  const charMap={Digit1:'warrior',Digit2:'knight',Digit3:'rogue'};
+  if(charMap[e.code]) net._selectedCharacter=charMap[e.code];
+  if(e.code==='Enter'&&net._selectedCharacter){
+    net.ready(net._selectedCharacter);
+  }
+});
+</script>
+</body>
+</html>

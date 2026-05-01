@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+*.db
+*.zip
+.env
+venv/
+.venv/
+ai_logs/
+ai_checkpoints/
+_selfplay_tmp.zip
