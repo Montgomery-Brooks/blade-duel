@@ -52,13 +52,13 @@ def build_obs(player, opponent) -> np.ndarray:
     return np.array([
         player.x / SCREEN_W,
         player.y / GROUND_Y,
-        player.health / 100
+        player.health / 100,
         1.0 if player.action == "idle"      else 0.0,
         1.0 if player.action == "attacking" else 0.0,
         1.0 if player.action == "blocking"  else 0.0,
         opponent.x / SCREEN_W,
         opponent.y / GROUND_Y,
-        opponent.health / 100
+        opponent.health / 100,
         1.0 if opponent.action == "attacking" else 0.0,
         1.0 if opponent.action == "blocking"  else 0.0,
         abs(player.x - opponent.x) / SCREEN_W,
