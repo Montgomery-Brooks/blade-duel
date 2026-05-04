@@ -454,15 +454,11 @@ def health():
 
 @app.get("/matches/{match_id}/events")
 def get_events(match_id: str):
-    import sqlite3
-    conn = sqlite3.connect(db.DB_PATH)
-    rows = conn.execute(
-        "SELECT timestamp, event_type, data FROM events "
-        "WHERE match_id=? ORDER BY timestamp",
-        (match_id,)
-    ).fetchall()
-    conn.close()
-    return [{"ts": r[0], "type": r[1], "data": json.loads(r[2])} for r in rows]
+    return db.get_match_events(match_id)
+
+@app.get("/matches")
+def get_matches():
+    return db.get_all_matches()
 
 # ── Serve client ──────────────────────────────────────────────────────────────
 
