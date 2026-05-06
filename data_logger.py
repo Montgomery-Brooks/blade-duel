@@ -103,3 +103,42 @@ def log_event(conn, match_id: str, event_type: str, data: dict):
         "INSERT INTO events (match_id, timestamp, event_type, data) VALUES (?,?,?,?)",
         (match_id, time.time(), event_type, json.dumps(data))
     )
+
+# ── Query functions ───────────────────────────────────────────────────────────
+
+def get_match_events(match_id: str) -> list:
+    try:
+        conn   = sqlite3.connect(DB_PATH)
+        rows   = conn.execute(
+            "SELECT timestamp, event_type, data FROM events "
+            "WHERE match_id=? ORDER BY timestamp",
+            (match_id,)
+        ).fetchall()
+        conn.close()
+        return [{"ts": r[0], "type": r[1], "data": json.loads(r[2]), "match_id": match_id} for r in rows]
+    except Exception as e:
+        print(f"[db error] get_match_events: {e}")
+        return []
+
+def get_all_matches() -> list:
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        rows = conn.execute(
+            "SELECT match_id, started_at, ended_at, winner_id, total_rounds "
+            "FROM matches ORDER BY started_at DESC LIMIT 100"
+        ).fetchall()
+        conn.close()
+        return [
+            {
+                "match_id":     r[0],
+                "started_at":   r[1],
+                "ended_at":     r[2],
+                "winner_id":    r[3],
+                "total_rounds": r[4],
+                "mode":         "pvp",
+            }
+            for r in rows
+        ]
+    except Exception as e:
+        print(f"[db error] get_all_matches: {e}")
+        return []

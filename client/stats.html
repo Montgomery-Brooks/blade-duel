@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>BLADE DUEL — Statistics</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --gold:     #c9a84c;
+      --gold2:    #e8cc7a;
+      --gold-dim: #6b561f;
+      --red:      #c0392b;
+      --red2:     #e74c3c;
+      --blue:     #1a6fb5;
+      --blue2:    #3498db;
+      --green:    #27ae60;
+      --purple:   #8e44ad;
+      --dark:     #07060f;
+      --dark2:    #0d0b1a;
+      --dark3:    #13111f;
+      --panel:    rgba(255,255,255,0.03);
+      --border:   rgba(201,168,76,0.15);
+      --border2:  rgba(201,168,76,0.3);
+      --mono:     'Share Tech Mono', monospace;
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      background: var(--dark);
+      color: rgba(255,255,255,0.85);
+      font-family: 'Cinzel', serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Scanlines ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.06) 3px,rgba(0,0,0,0.06) 4px);
+      pointer-events: none; z-index: 1000;
+    }
+
+    /* ── Background ── */
+    .bg-orbs {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      overflow: hidden;
+    }
+    .bg-orbs::before {
+      content: '';
+      position: absolute;
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(201,168,76,0.04) 0%, transparent 70%);
+      top: -200px; left: -200px;
+      animation: drift1 20s ease-in-out infinite alternate;
+    }
+    .bg-orbs::after {
+      content: '';
+      position: absolute;
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(26,111,181,0.04) 0%, transparent 70%);
+      bottom: -150px; right: -150px;
+      animation: drift2 25s ease-in-out infinite alternate;
+    }
+    @keyframes drift1 { to { transform: translate(100px, 80px); } }
+    @keyframes drift2 { to { transform: translate(-80px, -60px); } }
+
+    /* ── Layout ── */
+    .wrapper {
+      position: relative; z-index: 10;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 48px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .site-title {
+      font-family: 'Cinzel Decorative', serif;
+      font-size: 28px;
+      color: var(--gold);
+      text-shadow: 0 0 30px rgba(201,168,76,0.3);
+      letter-spacing: 0.05em;
+    }
+    .site-title span {
+      display: block;
+      font-family: 'Cinzel', serif;
+      font-size: 10px;
+      letter-spacing: 0.3em;
+      color: rgba(201,168,76,0.5);
+      margin-top: 4px;
+    }
+    .nav-links { display: flex; gap: 20px; align-items: center; }
+    .nav-links a {
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      color: rgba(255,255,255,0.4);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--gold); }
+    .nav-links a.active { color: var(--gold); }
+
+    /* ── Section title ── */
+    .section-title {
+      font-family: 'Cinzel', serif;
+      font-size: 10px;
+      letter-spacing: 0.4em;
+      color: rgba(201,168,76,0.5);
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Stat cards ── */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+    .stat-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px 20px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.3s;
+    }
+    .stat-card:hover { border-color: var(--border2); }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--accent, var(--gold));
+      opacity: 0.6;
+    }
+    .stat-card .label {
+      font-size: 9px;
+      letter-spacing: 0.25em;
+      color: rgba(255,255,255,0.35);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .stat-card .value {
+      font-family: 'Cinzel Decorative', serif;
+      font-size: 36px;
+      color: var(--gold2);
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+    .stat-card .sub {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: rgba(255,255,255,0.25);
+    }
+
+    /* ── Two column layout ── */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 40px;
+    }
+
+    /* ── Panel ── */
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+    }
+    .panel-title {
+      font-size: 10px;
+      letter-spacing: 0.25em;
+      color: rgba(201,168,76,0.6);
+      text-transform: uppercase;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── Bar chart ── */
+    .bar-chart { display: flex; flex-direction: column; gap: 12px; }
+    .bar-row { display: flex; align-items: center; gap: 12px; }
+    .bar-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: rgba(255,255,255,0.5);
+      width: 90px;
+      flex-shrink: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .bar-track {
+      flex: 1;
+      height: 8px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 1s cubic-bezier(0.4,0,0.2,1);
+      width: 0%;
+    }
+    .bar-val {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: rgba(255,255,255,0.4);
+      width: 30px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    /* ── Mode doughnut ── */
+    .donut-wrap {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+    }
+    canvas.donut { flex-shrink: 0; }
+    .donut-legend { display: flex; flex-direction: column; gap: 12px; flex: 1; }
+    .legend-item { display: flex; align-items: center; gap: 10px; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .legend-label { font-size: 11px; color: rgba(255,255,255,0.5); flex: 1; letter-spacing: 0.1em; }
+    .legend-val { font-family: var(--mono); font-size: 11px; color: rgba(255,255,255,0.7); }
+
+    /* ── Match table ── */
+    .match-table-wrap { margin-bottom: 40px; }
+    .match-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .match-table th {
+      font-size: 9px;
+      letter-spacing: 0.25em;
+      color: rgba(201,168,76,0.5);
+      text-transform: uppercase;
+      padding: 0 16px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .match-table td {
+      padding: 14px 16px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: rgba(255,255,255,0.6);
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      vertical-align: middle;
+    }
+    .match-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .match-table .winner-cell { color: var(--gold2); font-weight: 600; }
+    .mode-badge {
+      display: inline-block;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      padding: 2px 8px;
+      border-radius: 3px;
+      text-transform: uppercase;
+    }
+    .mode-pvp { background: rgba(201,168,76,0.12); color: var(--gold); border: 1px solid rgba(201,168,76,0.2); }
+    .mode-pve { background: rgba(39,174,96,0.12); color: #2ecc71; border: 1px solid rgba(39,174,96,0.2); }
+    .mode-ava { background: rgba(142,68,173,0.12); color: #9b59b6; border: 1px solid rgba(142,68,173,0.2); }
+
+    /* ── Timeline ── */
+    .timeline-wrap { position: relative; }
+    canvas.timeline { width: 100%; height: 140px; display: block; }
+
+    /* ── Loading / empty states ── */
+    .loading {
+      text-align: center;
+      padding: 40px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: rgba(255,255,255,0.2);
+      letter-spacing: 0.2em;
+    }
+    .loading::after {
+      content: '';
+      display: inline-block;
+      width: 6px; height: 6px;
+      background: var(--gold);
+      border-radius: 50%;
+      margin-left: 8px;
+      animation: blink 1s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:.2} 50%{opacity:1} }
+
+    /* ── Live indicator ── */
+    .live-dot {
+      display: inline-block;
+      width: 7px; height: 7px;
+      background: var(--green);
+      border-radius: 50%;
+      margin-right: 6px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+
+    .refresh-btn {
+      font-family: 'Cinzel', serif;
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      color: rgba(201,168,76,0.5);
+      background: none;
+      border: 1px solid var(--border);
+      padding: 4px 12px;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .refresh-btn:hover { border-color: var(--border2); color: var(--gold); }
+
+    .header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 40px;
+    }
+    .last-updated {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: rgba(255,255,255,0.2);
+    }
+
+    @media (max-width: 768px) {
+      .stat-grid { grid-template-columns: repeat(2,1fr); }
+      .two-col   { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="bg-orbs"></div>
+
+<div class="wrapper">
+
+  <!-- Header -->
+  <header>
+    <div>
+      <div class="site-title">
+        BLADE DUEL
+        <span>MATCH STATISTICS</span>
+      </div>
+    </div>
+    <nav class="nav-links">
+      <a href="/">⚔ PLAY</a>
+      <a href="/stats" class="active">📊 STATS</a>
+    </nav>
+  </header>
+
+  <!-- Top row -->
+  <div class="header-row">
+    <div class="section-title">OVERVIEW</div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span class="last-updated" id="lastUpdated">Loading...</span>
+      <button class="refresh-btn" onclick="loadAll()">↻ REFRESH</button>
+    </div>
+  </div>
+
+  <!-- Stat cards -->
+  <div class="stat-grid" id="statCards">
+    <div class="stat-card" style="--accent:var(--gold)">
+      <div class="label">Total Matches</div>
+      <div class="value" id="totalMatches">—</div>
+      <div class="sub">all time</div>
+    </div>
+    <div class="stat-card" style="--accent:var(--red2)">
+      <div class="label">Total Hits Landed</div>
+      <div class="value" id="totalHits">—</div>
+      <div class="sub">across all matches</div>
+    </div>
+    <div class="stat-card" style="--accent:var(--blue2)">
+      <div class="label">Hits Blocked</div>
+      <div class="value" id="totalBlocked">—</div>
+      <div class="sub">successful blocks</div>
+    </div>
+    <div class="stat-card" style="--accent:var(--green)">
+      <div class="label">Avg Match Duration</div>
+      <div class="value" id="avgDuration">—</div>
+      <div class="sub">seconds per match</div>
+    </div>
+  </div>
+
+  <!-- Charts row -->
+  <div class="two-col" style="margin-bottom:40px;">
+
+    <!-- Win leaders -->
+    <div class="panel">
+      <div class="panel-title">🏆 WIN LEADERS</div>
+      <div class="bar-chart" id="winLeaders">
+        <div class="loading">LOADING</div>
+      </div>
+    </div>
+
+    <!-- Mode breakdown -->
+    <div class="panel">
+      <div class="panel-title">⚔ GAME MODE BREAKDOWN</div>
+      <div class="donut-wrap">
+        <canvas class="donut" id="donutCanvas" width="120" height="120"></canvas>
+        <div class="donut-legend" id="donutLegend">
+          <div class="loading">LOADING</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Activity timeline -->
+  <div class="section-title" style="margin-bottom:16px;">MATCH ACTIVITY</div>
+  <div class="panel" style="margin-bottom:40px;">
+    <div class="panel-title">
+      <span class="live-dot"></span>MATCHES OVER TIME
+    </div>
+    <div class="timeline-wrap">
+      <canvas class="timeline" id="timelineCanvas" height="120"></canvas>
+    </div>
+  </div>
+
+  <!-- Recent matches table -->
+  <div class="section-title" style="margin-bottom:16px;">RECENT MATCHES</div>
+  <div class="panel match-table-wrap">
+    <table class="match-table">
+      <thead>
+        <tr>
+          <th>Match ID</th>
+          <th>Mode</th>
+          <th>Winner</th>
+          <th>Rounds</th>
+          <th>Started</th>
+          <th>Duration</th>
+        </tr>
+      </thead>
+      <tbody id="matchTable">
+        <tr><td colspan="6" class="loading">LOADING MATCHES</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+// ── API base ──────────────────────────────────────────────────────────────────
+const BASE = '';   // same origin
+
+// ── Colour palette ─────────────────────────────────────────────────────────────
+const COLORS = {
+  gold:    '#c9a84c',
+  red:     '#e74c3c',
+  blue:    '#3498db',
+  green:   '#2ecc71',
+  purple:  '#9b59b6',
+  orange:  '#e67e22',
+};
+const BAR_COLORS = [COLORS.gold, COLORS.red, COLORS.blue, COLORS.green, COLORS.purple, COLORS.orange];
+const MODE_COLORS = { pvp: COLORS.gold, pve: COLORS.green, ava: COLORS.purple };
+
+// ── Fetch helpers ──────────────────────────────────────────────────────────────
+async function fetchMatches() {
+  try {
+    const r = await fetch(`${BASE}/matches`);
+    if (!r.ok) return [];
+    return await r.json();
+  } catch { return []; }
+}
+
+async function fetchEvents(matchId) {
+  try {
+    const r = await fetch(`${BASE}/matches/${matchId}/events`);
+    if (!r.ok) return [];
+    return await r.json();
+  } catch { return []; }
+}
+
+// ── Main load ─────────────────────────────────────────────────────────────────
+async function loadAll() {
+  document.getElementById('lastUpdated').textContent = 'Updating...';
+  const matches = await fetchMatches();
+
+  if (matches.length === 0) {
+    document.getElementById('totalMatches').textContent = '0';
+    document.getElementById('totalHits').textContent = '0';
+    document.getElementById('totalBlocked').textContent = '0';
+    document.getElementById('avgDuration').textContent = '0s';
+    document.getElementById('winLeaders').innerHTML = '<div class="loading" style="animation:none;color:rgba(255,255,255,.2)">NO MATCHES YET — PLAY A GAME FIRST</div>';
+    document.getElementById('matchTable').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;font-family:var(--mono);font-size:12px;color:rgba(255,255,255,.2)">NO MATCHES RECORDED YET</td></tr>';
+    document.getElementById('lastUpdated').textContent = 'No data yet';
+    return;
+  }
+
+  // Fetch all events for all matches in parallel
+  const allEventsArrays = await Promise.all(matches.map(m => fetchEvents(m.match_id)));
+  const allEvents = allEventsArrays.flat();
+
+  renderStatCards(matches, allEvents);
+  renderWinLeaders(matches, allEvents);
+  renderDonut(matches);
+  renderTimeline(matches);
+  renderMatchTable(matches, allEvents);
+
+  const now = new Date();
+  document.getElementById('lastUpdated').textContent =
+    `Updated ${now.toLocaleTimeString()}`;
+}
+
+// ── Stat cards ────────────────────────────────────────────────────────────────
+function renderStatCards(matches, events) {
+  document.getElementById('totalMatches').textContent = matches.length;
+
+  const hits    = events.filter(e => e.type === 'hit');
+  const blocked = hits.filter(e => { try { return JSON.parse(e.data||'{}').blocked; } catch { return false; } });
+
+  document.getElementById('totalHits').textContent    = hits.length;
+  document.getElementById('totalBlocked').textContent = blocked.length;
+
+  // Avg duration from round_end events
+  const roundEnds = events.filter(e => e.type === 'round_end');
+  if (roundEnds.length > 0) {
+    const durations = roundEnds.map(e => {
+      try { return JSON.parse(e.data||'{}').duration || 0; } catch { return 0; }
+    });
+    const avg = durations.reduce((a,b)=>a+b,0) / durations.length;
+    document.getElementById('avgDuration').textContent = Math.round(avg) + 's';
+  } else {
+    document.getElementById('avgDuration').textContent = '—';
+  }
+}
+
+// ── Win leaders bar chart ──────────────────────────────────────────────────────
+function renderWinLeaders(matches, events) {
+  // Count wins by player name from match_end events
+  const wins = {};
+  events.forEach(e => {
+    if (e.type !== 'match_end') return;
+    try {
+      const d = JSON.parse(e.data || '{}');
+      if (d.winner_id) {
+        // Find player name from match_start events for this match
+      }
+    } catch {}
+  });
+
+  // Use match winner_id — look up names from match_start events
+  const nameMap = {};
+  events.forEach(e => {
+    if (e.type !== 'match_start') return;
+    try {
+      const d = JSON.parse(e.data || '{}');
+      const players = d.players || {};
+      Object.entries(players).forEach(([pid, name]) => {
+        nameMap[pid] = name;
+      });
+    } catch {}
+  });
+
+  matches.forEach(m => {
+    if (!m.winner_id) return;
+    const name = nameMap[m.winner_id] || `Player ${m.winner_id}`;
+    wins[name] = (wins[name] || 0) + 1;
+  });
+
+  const sorted = Object.entries(wins).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const max    = sorted[0]?.[1] || 1;
+  const el     = document.getElementById('winLeaders');
+
+  if (sorted.length === 0) {
+    el.innerHTML = '<div style="font-family:var(--mono);font-size:11px;color:rgba(255,255,255,.2);padding:20px 0;text-align:center;">NO DATA YET</div>';
+    return;
+  }
+
+  el.innerHTML = sorted.map(([name, count], i) => `
+    <div class="bar-row">
+      <div class="bar-label" title="${name}">${name.toUpperCase()}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="background:${BAR_COLORS[i%BAR_COLORS.length]}" data-width="${(count/max*100).toFixed(1)}%"></div>
+      </div>
+      <div class="bar-val">${count}</div>
+    </div>
+  `).join('');
+
+  // Animate bars
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.bar-fill').forEach(b => {
+      b.style.width = b.dataset.width;
+    });
+  });
+}
+
+// ── Mode donut chart ───────────────────────────────────────────────────────────
+function renderDonut(matches) {
+  const counts = { pvp: 0, pve: 0, ava: 0 };
+  matches.forEach(m => { if (m.mode && counts[m.mode] !== undefined) counts[m.mode]++; });
+
+  const total  = matches.length || 1;
+  const canvas = document.getElementById('donutCanvas');
+  const ctx    = canvas.getContext('2d');
+  const cx = 60, cy = 60, r = 48, iR = 30;
+
+  ctx.clearRect(0, 0, 120, 120);
+
+  const slices = [
+    { label: 'PvP', value: counts.pvp, color: MODE_COLORS.pvp },
+    { label: 'PvE', value: counts.pve, color: MODE_COLORS.pve },
+    { label: 'AI vs AI', value: counts.ava, color: MODE_COLORS.ava },
+  ];
+
+  let startAngle = -Math.PI / 2;
+  slices.forEach(s => {
+    const sweep = (s.value / total) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, startAngle, startAngle + sweep);
+    ctx.closePath();
+    ctx.fillStyle = s.color;
+    ctx.globalAlpha = 0.85;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    startAngle += sweep;
+  });
+
+  // Hole
+  ctx.beginPath();
+  ctx.arc(cx, cy, iR, 0, Math.PI * 2);
+  ctx.fillStyle = '#07060f';
+  ctx.fill();
+
+  // Centre text
+  ctx.fillStyle = 'rgba(201,168,76,0.8)';
+  ctx.font = 'bold 13px "Cinzel Decorative", serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(total, cx, cy);
+
+  // Legend
+  const legendEl = document.getElementById('donutLegend');
+  legendEl.innerHTML = slices.map(s => `
+    <div class="legend-item">
+      <div class="legend-dot" style="background:${s.color}"></div>
+      <div class="legend-label">${s.label.toUpperCase()}</div>
+      <div class="legend-val">${s.value}</div>
+    </div>
+  `).join('');
+}
+
+// ── Activity timeline ──────────────────────────────────────────────────────────
+function renderTimeline(matches) {
+  const canvas = document.getElementById('timelineCanvas');
+  canvas.width = canvas.offsetWidth || 700;
+  const ctx    = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  if (matches.length === 0) return;
+
+  // Group by day
+  const dayMap = {};
+  matches.forEach(m => {
+    if (!m.started_at) return;
+    const d = new Date(m.started_at * 1000);
+    const key = `${d.getMonth()+1}/${d.getDate()}`;
+    dayMap[key] = (dayMap[key] || 0) + 1;
+  });
+
+  const days   = Object.keys(dayMap).slice(-14);
+  const counts = days.map(d => dayMap[d]);
+  const maxC   = Math.max(...counts, 1);
+  const step   = W / (days.length + 1);
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  ctx.lineWidth   = 1;
+  [0.25, 0.5, 0.75, 1].forEach(t => {
+    const y = H - 30 - (H - 50) * t;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  });
+
+  // Line chart with gradient fill
+  const pts = days.map((d, i) => ({
+    x: step * (i + 1),
+    y: H - 30 - ((counts[i] / maxC) * (H - 50)),
+  }));
+
+  // Gradient fill
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0,   'rgba(201,168,76,0.3)');
+  grad.addColorStop(1,   'rgba(201,168,76,0)');
+
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, H - 30);
+  pts.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.lineTo(pts[pts.length-1].x, H - 30);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  pts.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.strokeStyle = 'rgba(201,168,76,0.8)';
+  ctx.lineWidth   = 2;
+  ctx.stroke();
+
+  // Dots + labels
+  pts.forEach((p, i) => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#c9a84c';
+    ctx.fill();
+
+    ctx.fillStyle  = 'rgba(255,255,255,0.25)';
+    ctx.font       = '9px "Share Tech Mono", monospace';
+    ctx.textAlign  = 'center';
+    ctx.fillText(days[i], p.x, H - 8);
+  });
+}
+
+// ── Match table ───────────────────────────────────────────────────────────────
+function renderMatchTable(matches, events) {
+  // Build name map
+  const nameMap = {};
+  events.forEach(e => {
+    if (e.type !== 'match_start') return;
+    try {
+      const d = JSON.parse(e.data || '{}');
+      const players = d.players || {};
+      Object.entries(players).forEach(([pid, name]) => {
+        if (!nameMap[e.match_id]) nameMap[e.match_id] = {};
+        nameMap[e.match_id][pid] = name;
+      });
+    } catch {}
+  });
+
+  const tbody = document.getElementById('matchTable');
+
+  const rows = matches.slice(0,20).map(m => {
+    const started  = m.started_at ? new Date(m.started_at*1000).toLocaleString() : '—';
+    const duration = (m.started_at && m.ended_at)
+      ? `${Math.round(m.ended_at - m.started_at)}s`
+      : '—';
+    const names    = nameMap[m.match_id] || {};
+    const winner   = m.winner_id ? (names[m.winner_id] || `Player ${m.winner_id}`) : '—';
+    const modeLabel = m.mode || 'pvp';
+    const badgeClass = `mode-${modeLabel}`;
+    const modeDisplay = {pvp:'PvP', pve:'PvE', ava:'AI vs AI'}[modeLabel] || modeLabel;
+
+    return `
+      <tr>
+        <td style="font-family:var(--mono);font-size:11px;color:rgba(255,255,255,.3)">${m.match_id}</td>
+        <td><span class="mode-badge ${badgeClass}">${modeDisplay}</span></td>
+        <td class="winner-cell">${winner.toUpperCase()}</td>
+        <td>${m.total_rounds || '—'}</td>
+        <td style="font-size:11px">${started}</td>
+        <td>${duration}</td>
+      </tr>
+    `;
+  });
+
+  tbody.innerHTML = rows.join('') || '<tr><td colspan="6" style="text-align:center;padding:40px;font-family:var(--mono);font-size:12px;color:rgba(255,255,255,.2)">NO MATCHES YET</td></tr>';
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadAll();
+setInterval(loadAll, 30000);   // auto-refresh every 30 seconds
+</script>
+</body>
+</html>
