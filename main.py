@@ -65,27 +65,62 @@ def build_obs(player, opponent) -> np.ndarray:
     ], dtype=np.float32)
 
 def get_ai_action(state: GameState, player_id: int) -> str:
-    """Ask the AI model what to do and return the action name."""
-    if not AI_AVAILABLE or ai_model is None:
-        return "idle"
+    """
+    Rule-based AI that always engages and attacks.
+    Used as fallback when trained model is unavailable or misbehaving.
+    """
     player   = state.players.get(player_id)
     opp_id   = 2 if player_id == 1 else 1
     opponent = state.players.get(opp_id)
+
     if not player or not opponent:
         return "idle"
-    obs           = build_obs(player, opponent)
-    action_idx, _ = ai_model.predict(obs, deterministic=True)
-    return ACTIONS[int(action_idx)]
+    if player.is_ko() or opponent.is_ko():
+        return "idle"
+
+    dist = abs(player.x - opponent.x)
+
+    # Always face the opponent first
+    if opponent.x > player.x:
+        player.facing = "right"
+    else:
+        player.facing = "left"
+
+    # If far away — run toward opponent
+    if dist > ATTACK_RANGE + 10:
+        return "move_left" if opponent.x < player.x else "move_right"
+
+    # If in attack range — attack most of the time
+    import random
+    r = random.random()
+    if r < 0.70:
+        return "attack"
+    elif r < 0.80:
+        return "block"
+    elif r < 0.90:
+        return "jump"
+    else:
+        return "move_left" if opponent.x < player.x else "move_right"
+
 
 def apply_ai_action(state: GameState, player_id: int, action_name: str):
-    """Translate an AI action string into game state changes."""
-    opp_id = 2 if player_id == 1 else 1
+    """Apply an AI action to the game state."""
+    opp_id   = 2 if player_id == 1 else 1
+    player   = state.players.get(player_id)
+    opponent = state.players.get(opp_id)
+
+    if player and opponent:
+        # Always face the opponent
+        if opponent.x > player.x:
+            player.facing = "right"
+        else:
+            player.facing = "left"
+
     if action_name == "move_left":
         state.move_player(player_id, -1, 0)
     elif action_name == "move_right":
         state.move_player(player_id,  1, 0)
     elif action_name == "jump":
-        player = state.players.get(player_id)
         if player:
             player.action = "jumping"
     elif action_name == "attack":
