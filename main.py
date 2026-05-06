@@ -439,6 +439,13 @@ def get_matches():
 def get_events(match_id: str):
     return db.get_match_events(match_id)
 
+@app.get("/stats")
+def stats_page():
+    from fastapi.responses import FileResponse
+    return FileResponse(
+        os.path.join(os.path.dirname(__file__), "client", "stats.html")
+    )
+
 # ── Serve client ──────────────────────────────────────────────────────────────
 
 client_dir = os.path.join(os.path.dirname(__file__), "client")
